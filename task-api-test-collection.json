@@ -1,0 +1,212 @@
+{
+  "info": {
+    "name": "Task Management API - Spec Validation",
+    "description": "Коллекция для проверки контракта OpenAPI",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4010",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "dummy-jwt-token-for-testing",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "GET /tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{authToken}}", "type": "text"},
+              {"key": "Accept", "value": "application/json", "type": "text"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tasks?status=todo&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"],
+              "query": [
+                {"key": "status", "value": "todo"},
+                {"key": "limit", "value": "5"}
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response is array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(Array.isArray(json)).to.be.true;",
+                  "});",
+                  "pm.test('Items have required fields', () => {",
+                  "  const tasks = pm.response.json();",
+                  "  tasks.forEach(t => {",
+                  "    pm.expect(t).to.have.property('id');",
+                  "    pm.expect(t).to.have.property('title');",
+                  "    pm.expect(t).to.have.property('status');",
+                  "    pm.expect(t).to.have.property('createdAt');",
+                  "  });",
+                  "});",
+                  "if (pm.response.json().length > 0) {",
+                  "  pm.collectionVariables.set('taskId', pm.response.json()[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /tasks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{authToken}}", "type": "text"},
+              {"key": "Content-Type", "value": "application/json", "type": "text"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Validate OpenAPI spec\",\n  \"status\": \"in_progress\",\n  \"description\": \"Testing contract without backend\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Response contains new task ID', () => {",
+                  "  const t = pm.response.json();",
+                  "  pm.expect(t).to.have.property('id');",
+                  "  pm.collectionVariables.set('taskId', t.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /tasks/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{authToken}}", "type": "text"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ID matches requested', () => {",
+                  "  pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('taskId'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /tasks/:id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{authToken}}", "type": "text"},
+              {"key": "Content-Type", "value": "application/json", "type": "text"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated task title\",\n  \"status\": \"done\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response contains valid title', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('title');",
+                  "  pm.expect(json.title).to.be.a('string');",
+                  "  pm.expect(json.title.length).to.be.greaterThan(0);",
+                  "});",
+                  "pm.test('Response matches Task schema', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('id');",
+                  "  pm.expect(json).to.have.property('status');",
+                  "  pm.expect(['todo', 'in_progress', 'done']).to.include(json.status);",
+                  "  pm.expect(json).to.have.property('createdAt');",
+                  "  pm.expect(new Date(json.createdAt)).to.be.instanceOf(Date);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /tasks/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{authToken}}", "type": "text"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tasks", "{{taskId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));",
+                  "pm.test('Body is empty', () => {",
+                  "  pm.expect(pm.response.text()).to.be.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
